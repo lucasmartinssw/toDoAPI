@@ -1,56 +1,103 @@
-const tasks = require('../data/tasks')
+const { Task } = require('../models');
 
-const getAllTasks = (req, res) => {
-    res.json(tasks)
-}
-
-const getTaskById = (req, res) => {
-    const taskId = parseInt(req.params.id) 
-    const task = tasks.find(t => t.id === taskId)
-
-    if (!task) {
-        return res.status(404).json({ message: 'Tarefa não encontrada' })
+// Listar todas as tarefas DO USUÁRIO LOGADO
+const getAllTasks = async (req, res) => {
+    try {
+        const userId = req.user.id; // Obtém o ID do usuário logado do token JWT
+        const tasks = await Task.findAll({ 
+            where: { userId } // Filtra apenas as tarefas do usuário logado
+        });
+        res.json(tasks);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao buscar tarefas', error });
     }
+};
 
-    res.json(task)
-}
-
-const createTask = (req, res) => {
-    const newTask = {
-        id: tasks.length + 1,
-        title: req.body.title,
-        completed: false
-    };
-
-    tasks.push(newTask)
-    res.status(201).json(newTask)
-}
-
-const updateTask = (req, res) => {
-    const taskId = parseInt(req.params.id)
-    const task = tasks.find(t => t.id === taskId)
-
-    if (!task) {
-        return res.status(404).json({ message: 'Tarefa não encontrada' })
+// Obter uma tarefa por ID (SOMENTE DO USUÁRIO LOGADO)
+const getTaskById = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const task = await Task.findOne({ 
+            where: { 
+                id: req.params.id,
+                userId // Garante que a tarefa pertence ao usuário
+            } 
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: 'Tarefa não encontrada' });
+        }
+        res.json(task);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao buscar tarefa', error });
     }
+};
 
-    task.title = req.body.title || task.title
-    task.completed = req.body.completed || task.completed
-
-    res.json(task);
-}
-
-const deleteTask = (req, res) => {
-    const taskId = parseInt(req.params.id); // Certifique-se de usar taskId
-    const taskIndex = tasks.findIndex(t => t.id === taskId)
-
-    if (taskIndex === -1) {
-        return res.status(404).json({ message: 'Tarefa não encontrada' })
+// Criar uma nova tarefa PARA O USUÁRIO LOGADO
+const createTask = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { title } = req.body;
+        
+        const newTask = await Task.create({ 
+            title,
+            userId // Associa a tarefa ao usuário logado
+        });
+        
+        res.status(201).json(newTask);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao criar tarefa', error });
     }
+};
 
-    tasks.splice(taskIndex, 1)
-    res.status(204).send()
-}
+// Atualizar uma tarefa (SOMENTE DO USUÁRIO LOGADO)
+const updateTask = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const { title, completed } = req.body;
+        
+        const task = await Task.findOne({ 
+            where: { 
+                id: req.params.id,
+                userId 
+            } 
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: 'Tarefa não encontrada' });
+        }
+        
+        task.title = title || task.title;
+        task.completed = completed || task.completed;
+        await task.save();
+        
+        res.json(task);
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao atualizar tarefa', error });
+    }
+};
+
+// Deletar uma tarefa (SOMENTE DO USUÁRIO LOGADO)
+const deleteTask = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const task = await Task.findOne({ 
+            where: { 
+                id: req.params.id,
+                userId 
+            } 
+        });
+        
+        if (!task) {
+            return res.status(404).json({ message: 'Tarefa não encontrada' });
+        }
+        
+        await task.destroy();
+        res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ message: 'Erro ao deletar tarefa', error });
+    }
+};
 
 module.exports = {
     getAllTasks,
@@ -58,4 +105,4 @@ module.exports = {
     createTask,
     updateTask,
     deleteTask
-}
+};

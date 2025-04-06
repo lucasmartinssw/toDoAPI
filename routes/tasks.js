@@ -1,13 +1,14 @@
 const express = require('express')
 const router = express.Router()
 const tasksController = require('../controllers/tasksController')
+const authenticate = require('../middleware/authenticate')
 
 //Rotas
 
-router.get('/', tasksController.getAllTasks)
-router.get('/:id', tasksController.getTaskById)
-router.post('/', tasksController.createTask)
-router.put('/:id', tasksController.updateTask)
-router.delete('/:id', tasksController.deleteTask)
+router.get('/', authenticate, tasksController.getAllTasks)
+router.get('/:id', authenticate, tasksController.getTaskById)
+router.post('/', authenticate, tasksController.createTask)
+router.put('/:id', authenticate, tasksController.updateTask)
+router.delete('/:id', authenticate, tasksController.deleteTask)
 
 module.exports = router
